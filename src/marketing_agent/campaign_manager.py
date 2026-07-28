@@ -1,47 +1,46 @@
-import random
-import json
 import os
-
-STORAGE_FILE = 'campaign_data.json'
+from .db import get_conn, gen_id, init_db
 
 class CampaignManager:
     def __init__(self):
-        self.campaigns = {}
-        self.load()
-
-    def save(self):
-        with open(STORAGE_FILE, 'w') as f:
-            json.dump(self.campaigns, f, indent=2)
-
-    def load(self):
-        if os.path.exists(STORAGE_FILE):
-            try:
-                with open(STORAGE_FILE, 'r') as f:
-                    self.campaigns = json.load(f)
-            except:
-                self.campaigns = {}
+        init_db()
 
     def plan_campaign(self, name, objective, target_audience, budget):
-        campaign_id = f"cmp_{random.randint(1000, 9999)}"
-        self.campaigns[campaign_id] = {
-            'name': name,
-            'objective': objective,
-            'target_audience': target_audience,
-            'budget': budget,
-            'status': 'planned'
-        }
-        self.save()
-        return campaign_id
+        cid = gen_id("cmp")
+        conn = get_conn()
+        conn.execute(
+            "INSERT INTO campaigns (id, name, objective, target_audience, budget, status) VALUES (?, ?, ?, ?, ?, 'planned')",
+            (cid, name, objective, target_audience, budget)
+        )
+        conn.commit()
+        conn.close()
+        return cid
 
     def execute_campaign(self, name):
-        for cid, c in self.campaigns.items():
-            if c['name'] == name:
-                if c['status'] == 'planned':
-                    c['status'] = 'executing'
-                    self.save()
-                    return f"Campaign '{name}' ({cid}) execution started."
-                else:
-                    return f"Campaign '{name}' ({cid}) is already in '{c['status']}' state."
-        return f"Campaign '{name}' not found."
+        conn = get_conn()
+        # Get campaign by name first to find its ID
+        row_by_name = conn.execute("SELECT id, status FROM campaigns WHERE name = ?", (name,)).fetchone()
+        if not row_by_name:
+            conn.close()
+            return f"Campaign '{name}' not found."
+
+        campaign_id, current_status = row_by_name['id'], row_by_name['status']
+
+        if current_status == 'planned':
+            conn.execute("UPDATE campaigns SET status='executing', updated_at=datetime('now') WHERE id=?", (campaign_id,))
+            conn.commit()
+            conn.close()
+            return f"Campaign '{name}' ({campaign_id}) execution started."
+        else:
+            conn.close()
+            return f"Campaign '{name}' ({campaign_id}) is already in '{current_status}' state."
+
+    @property
+    def campaigns(self):
+        conn = get_conn()
+        rows = conn.execute("SELECT id, name, objective, target_audience, budget, status FROM campaigns ORDER BY created_at DESC").fetchall()
+        conn.close()
+        # Return as dict for consistency with previous JSON structure
+        return {r['id']: dict(r) for r in rows}
 
 campaign_manager = CampaignManager()
