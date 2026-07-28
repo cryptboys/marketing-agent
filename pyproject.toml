@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "marketing-agent"
+version = "0.1.0"
+description = "A marketing agent assistant."
+authors = [
+    { name="Hermes", email="hermes@example.com" },
+]
+requires-python = ">=3.8"
+license = {"file" = "LICENSE"}
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+marketing-agent = "marketing_agent.cli:cli"
+
+[project.dependencies]
+click = "*"
+PyYAML = "*"
+amarkets = "*"
+requests = "*"
+# Add other dependencies as needed, e.g., for specific LLM providers or ad platforms
+# openai = "*"
+# anthropic = "*"
+# google-ads = "*"
