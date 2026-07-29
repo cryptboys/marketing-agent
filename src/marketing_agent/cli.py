@@ -10,6 +10,7 @@ from marketing_agent.governance import budget_manager, egress_validator, audit_t
 from marketing_agent.skill_manager import skill_manager
 from marketing_agent.dashboard import dashboard
 from marketing_agent.ad_copy_generator import ad_copy_generator
+from marketing_agent.report_generator import report_generator
 
 @click.group()
 def cli():
@@ -139,6 +140,13 @@ def dashboard_view():
     click.echo(f"Executing: {data['campaigns']['executing']}")
     click.echo(f"Completed: {data['campaigns']['completed']}")
     click.echo(f"Total Budget Allocated: {data['campaigns']['total_budget_allocated']}")
+
+@cli.command()
+def generate_report():
+    """Generates an HTML performance report."""
+    path = report_generator.save_html()
+    click.echo(f"Report saved to: {path}")
+    audit_tracer.add_trace('generate_report', {'path': path})
 
 if __name__ == '__main__':
     cli()
