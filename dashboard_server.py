@@ -77,10 +77,10 @@ HTML_DASHBOARD = '''<!DOCTYPE html>
                 <a href="/logout" class="text-sm text-gray-400 hover:text-white">Logout</a>
             </div>
             <nav class="space-y-2">
-                <div class="p-2 bg-gray-700 rounded text-teal-400">Dashboard</div>
-                <div class="p-2 text-gray-400 hover:bg-gray-700 rounded">Campaigns</div>
-                <div class="p-2 text-gray-400 hover:bg-gray-700 rounded">Analytics</div>
-                <div class="p-2 text-gray-400 hover:bg-gray-700 rounded">Settings</div>
+                <a href="/" class="block p-2 text-gray-400 hover:bg-gray-700 rounded active-link">Dashboard</a>
+                <a href="/campaigns" class="block p-2 text-gray-400 hover:bg-gray-700 rounded">Campaigns</a>
+                <a href="/analytics" class="block p-2 text-gray-400 hover:bg-gray-700 rounded">Analytics</a>
+                <a href="/settings" class="block p-2 text-gray-400 hover:bg-gray-700 rounded">Settings</a>
             </nav>
         </div>
         <!-- Main Content -->
@@ -142,10 +142,167 @@ HTML_DASHBOARD = '''<!DOCTYPE html>
 </body>
 </html>'''
 
+HTML_CAMPAIGNS = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Campaigns - Marketing Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="w-64 bg-gray-800 p-6 min-h-screen">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-xl font-bold text-teal-400">Hermes AI</h2>
+                <a href="/logout" class="text-sm text-gray-400 hover:text-white">Logout</a>
+            </div>
+            <nav class="space-y-2">
+                <a href="/" class="block p-2 text-gray-400 hover:bg-gray-700 rounded">Dashboard</a>
+                <a href="/campaigns" class="block p-2 bg-gray-700 rounded text-teal-400 active-link">Campaigns</a>
+                <a href="/analytics" class="block p-2 text-gray-400 hover:bg-gray-700 rounded">Analytics</a>
+                <a href="/settings" class="block p-2 text-gray-400 hover:bg-gray-700 rounded">Settings</a>
+            </nav>
+        </div>
+        <!-- Main Content -->
+        <div class="flex-1 p-8">
+            <h1 class="text-2xl mb-8">Campaigns</h1>
+
+            <!-- Plan Campaign Form -->
+            <div class="bg-gray-800 p-6 rounded-xl mb-8">
+                <h3 class="text-lg mb-4">Plan New Campaign</h3>
+                <form id="plan_campaign_form" method="POST" action="/api/plan_campaign">
+                    <div class="mb-4">
+                        <label for="name" class="block text-gray-400 text-sm mb-1">Campaign Name</label>
+                        <input type="text" id="name" name="name" class="w-full p-2 bg-gray-700 rounded" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="objective" class="block text-gray-400 text-sm mb-1">Objective</label>
+                        <input type="text" id="objective" name="objective" class="w-full p-2 bg-gray-700 rounded" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="audience" class="block text-gray-400 text-sm mb-1">Target Audience</label>
+                        <input type="text" id="audience" name="target_audience" class="w-full p-2 bg-gray-700 rounded" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="budget" class="block text-gray-400 text-sm mb-1">Budget</label>
+                        <input type="number" id="budget" name="budget" class="w-full p-2 bg-gray-700 rounded" required min="100">
+                    </div>
+                    <button type="submit" class="bg-teal-500 p-2 rounded font-bold">Plan Campaign</button>
+                </form>
+            </div>
+
+            <!-- Active Campaigns Table -->
+            <div class="bg-gray-800 p-6 rounded-xl">
+                <h3 class="text-lg mb-4">All Campaigns</h3>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-500 uppercase text-xs">
+                            <th class="text-left pb-3">ID</th>
+                            <th class="text-left pb-3">Name</th>
+                            <th class="text-left pb-3">Status</th>
+                            <th class="text-left pb-3">Budget</th>
+                            <th class="text-left pb-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="campaigns_list_body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        function loadCampaigns() {
+            fetch('/api/campaigns').then(r => r.json()).then(campaigns => {
+                const tbody = document.getElementById('campaigns_list_body');
+                tbody.innerHTML = '';
+                Object.entries(campaigns).forEach(([id, data]) => {
+                    let statusColor = data.status === 'executing' ? 'bg-green-900 text-green-300' : 'bg-blue-900 text-blue-300';
+                    let actionButton = '';
+                    if (data.status === 'planned') {
+                        actionButton = `<button onclick="executeCampaign('${data.name}')" class="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded">Execute</button>`;
+                    }
+                    tbody.innerHTML += `<tr class="border-b border-gray-700">
+                        <td class="py-3 text-gray-500">${id}</td>
+                        <td class="py-3">${data.name}</td>
+                        <td class="py-3"><span class="px-2 py-1 rounded-full text-xs ${statusColor}">${data.status}</span></td>
+                        <td class="py-3">$${data.budget}</td>
+                        <td class="py-3">${actionButton}</td>
+                    </tr>`;
+                });
+            });
+        }
+
+        async function executeCampaign(campaignName) {
+            const response = await fetch('/api/execute_campaign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: campaignName })
+            });
+            const result = await response.json();
+            alert(result.message);
+            if (result.success) {
+                loadCampaigns(); // Reload campaigns after execution
+            }
+        }
+
+        document.getElementById('plan_campaign_form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const data = Object.fromEntries(formData.entries());
+            data.budget = parseFloat(data.budget); // Convert budget to number
+
+            const response = await fetch(event.target.action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            alert(result.message);
+            if (result.success) {
+                event.target.reset();
+                loadCampaigns(); // Reload campaigns after planning
+            }
+        });
+
+        loadCampaigns();
+        setInterval(loadCampaigns, 15000); // Auto-refresh
+    </script>
+</body>
+</html>'''
+
 @app.route('/')
 @login_required
 def index():
     return render_template_string(HTML_DASHBOARD, current_user=current_user)
+
+@app.route('/campaigns')
+@login_required
+def campaigns_page():
+    return render_template_string(HTML_CAMPAIGNS, current_user=current_user)
+
+@app.route('/api/plan_campaign', methods=['POST'])
+@login_required
+def api_plan_campaign():
+    data = request.get_json()
+    name = data.get('name')
+    objective = data.get('objective')
+    target_audience = data.get('target_audience')
+    budget = data.get('budget')
+    if not all([name, objective, target_audience, budget]):
+        return jsonify({'success': False, 'message': 'Missing data'}), 400
+    cid = campaign_manager.plan_campaign(name, objective, target_audience, budget)
+    return jsonify({'success': True, 'message': f'Campaign {name} ({cid}) planned!', 'campaign_id': cid})
+
+@app.route('/api/execute_campaign', methods=['POST'])
+@login_required
+def api_execute_campaign():
+    data = request.get_json()
+    name = data.get('name')
+    if not name:
+        return jsonify({'success': False, 'message': 'Missing campaign name'}), 400
+    message = campaign_manager.execute_campaign(name)
+    success = "execution started" in message
+    return jsonify({'success': success, 'message': message})
 
 @app.route('/api/dashboard')
 @login_required
@@ -156,6 +313,12 @@ def get_dashboard():
 @login_required
 def get_campaigns():
     return jsonify(campaign_manager.campaigns)
+
+@app.route('/api/audit')
+@login_required
+def get_audit():
+    logs = [{'action': t['action'], 'timestamp': t['timestamp']} for t in audit_tracer.trace_log]
+    return jsonify(logs)
 
 if __name__ == '__main__':
     app.run(port=5000, debug=False)
