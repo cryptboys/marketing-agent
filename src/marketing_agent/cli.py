@@ -9,6 +9,7 @@ from marketing_agent.crm_manager import crm_manager
 from marketing_agent.governance import budget_manager, egress_validator, audit_tracer
 from marketing_agent.skill_manager import skill_manager
 from marketing_agent.dashboard import dashboard
+from marketing_agent.ad_copy_generator import ad_copy_generator
 
 @click.group()
 def cli():
@@ -34,6 +35,18 @@ def generate_email(subject, body_text):
     email = content_generator.generate_email(subject, body_text)
     click.echo(email)
     audit_tracer.add_trace('generate_email', {'subject': subject})
+
+@cli.command()
+@click.option('--product', required=True, help='Product or service for the ad.')
+@click.option('--platform', required=True, help='Advertising platform (google, meta, tiktok, x).')
+@click.option('--audience', default='General', help='Target audience description.')
+@click.option('--tone', default='Direct and persuasive', help='Tone of the ad copy.')
+@click.option('--budget-range', default='Mid-tier', help='Budget range for the campaign.')
+def generate_ad_copy(product, platform, audience, tone, budget_range):
+    """Generates ad copy for a specified platform."""
+    copy = ad_copy_generator.generate(product, platform, audience, tone, budget_range)
+    click.echo(copy)
+    audit_tracer.add_trace('generate_ad_copy', {'product': product, 'platform': platform})
 
 # --- Data Analysis Commands ---
 

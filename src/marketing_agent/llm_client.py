@@ -1,56 +1,65 @@
 import requests
-import os
 import json
+import os
 
-NINE_ROUTER_URL = "http://localhost:20128/v1/chat/completions"
-DEFAULT_MODEL = "easy"
+env_path = r'C:\Users\Advan\.env'
+if os.path.exists(env_path):
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and '=' in line and not line.startswith('#'):
+                k, v = line.split('=', 1)
+                os.environ.setdefault(k.strip(), v.strip())
 
-def _load_env():
-    env_file = os.path.join(os.getcwd(), '.env')
-    if os.path.exists(env_file):
-        with open(env_file) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    k, v = line.split('=', 1)
-                    if k.strip() not in os.environ:
-                        os.environ[k.strip()] = v.strip()
+NINE_ROUTER_URL = os.getenv('NINE_ROUTER_URL', 'http://localhost:20128/v1')
+API_KEY = os.environ.get('NINE_ROUTER_API_KEY', 'sk-default')
+DEFAULT_MODEL = 'easy'
 
-_load_env()
-
-def llm_chat(prompt, model=DEFAULT_MODEL, system="You are a marketing assistant."):
-    api_key = os.environ.get("NINE_ROUTER_API_KEY", "")
-    if not api_key:
-        return None
-
-    headers = {"Authorization": f"Bearer {api_key}"}
+def llm_chat(prompt, system_prompt="You are a helpful marketing assistant.", model=DEFAULT_MODEL):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}"
+    }
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ]
+    }
     try:
-        resp = requests.post(
-            NINE_ROUTER_URL,
-            headers=headers,
-            json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.7
-            },
-            timeout=90
-        )
-        if resp.status_code != 200:
-            return f"[API Error {resp.status_code}]"
-
-        raw = resp.text.strip()
-        if raw.endswith("data: [DONE]"):
-            raw = raw[:-len("data: [DONE]")].strip()
-        if raw.startswith("data: "):
-            raw = raw[6:].strip()
-
-        data = json.loads(raw)
-        return data["choices"][0]["message"]["content"]
-
-    except json.JSONDecodeError as e:
-        return f"[Parse Error: {e}]"
+        r = requests.post(f"{NINE_ROUTER_URL}/chat/completions", headers=headers, json=payload, timeout=120)
+        r.raise_for_status()
+        raw = r.text
+        # Clean streaming artifacts from response
+        raw = raw.replace('data: [DONE]', '').strip()
+        # Try to find the first valid JSON object/array
+        # If raw has extra data, extract only the JSON part
+        lines = raw.split('\n')
+        json_part = None
+        for line in lines:
+            line = line.strip()
+            if line.startswith('{') or line.startswith('['):
+                try:
+                    json_part = json.loads(line)
+                    break
+                except:
+                    continue
+        if json_part is None:
+            # Fallback: try parsing the whole thing
+            json_part = json.loads(raw) if raw else {}
+        data = json_part
+        text = data.get('choices', [{}])[0].get('message', {}).get('content', str(data))
+        text = text.replace('data: [DONE]', '').strip()
+        if text.startswith('[') or text.startswith('{'):
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, list):
+                    text = '\n'.join(str(item) for item in parsed)
+                elif isinstance(parsed, dict):
+                    text = str(parsed)
+            except:
+                pass
+        return text
     except Exception as e:
-        return f"[Connection Error: {e}]"
+        raise Exception(f"API call failed: {e}")
