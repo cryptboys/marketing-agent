@@ -58,7 +58,15 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    return render_template_string(HTML_DASHBOARD, current_user=current_user)
+    overview = dashboard.get_overview()
+    # Ensure summary has all expected keys with defaults
+    summary = {
+        'total_campaigns': overview.get('campaigns', {}).get('total_campaigns', 0),
+        'total_budget': overview.get('campaigns', {}).get('total_budget_allocated', 0),
+        'planned': overview.get('campaigns', {}).get('planned', 0),
+        'executing': overview.get('campaigns', {}).get('executing', 0),
+    }
+    return render_template_string(HTML_DASHBOARD, current_user=current_user, summary=summary)
 
 @app.route('/campaigns')
 @login_required
@@ -71,7 +79,17 @@ def campaigns_page():
 @app.route('/analytics')
 @login_required
 def analytics_page():
-    return render_template_string(HTML_ANALYTICS, current_user=current_user)
+    # Fetch some analytics data to pass to template
+    conn = get_conn()
+    total_campaigns = conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0]
+    total_budget = conn.execute("SELECT COALESCE(SUM(budget), 0) FROM campaigns").fetchone()[0]
+    conn.close()
+    
+    analytics_data = {
+        'total_campaigns': total_campaigns,
+        'total_budget': total_budget
+    }
+    return render_template_string(HTML_ANALYTICS, current_user=current_user, analytics_data=analytics_data)
 
 @app.route('/integrations')
 @login_required
