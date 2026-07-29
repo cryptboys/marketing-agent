@@ -2,6 +2,8 @@ import sqlite3
 import os
 import random
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import UserMixin
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'marketing.db')
 
@@ -47,6 +49,12 @@ def init_db():
             key TEXT PRIMARY KEY,
             value TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL
+        );
     """)
     # Insert default budget if not exists
     conn.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('budget_total', '10000')")
@@ -56,3 +64,40 @@ def init_db():
 
 def gen_id(prefix):
     return f"{prefix}_{random.randint(1000, 9999)}"
+
+class User(UserMixin):
+    def __init__(self, id, username):
+        self.id = id
+        self.username = username
+
+    @staticmethod
+    def get(user_id):
+        conn = get_conn()
+        user = conn.execute("SELECT id, username FROM users WHERE id = ?", (user_id,)).fetchone()
+        conn.close()
+        if user:
+            return User(user['id'], user['username'])
+        return None
+
+    @staticmethod
+    def find_by_username(username):
+        conn = get_conn()
+        user = conn.execute("SELECT id, username, password_hash FROM users WHERE username = ?", (username,)).fetchone()
+        conn.close()
+        if user:
+            return user
+        return None
+
+    @staticmethod
+    def create(username, password):
+        conn = get_conn()
+        password_hash = generate_password_hash(password)
+        try:
+            conn.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password_hash))
+            conn.commit()
+            user = conn.execute("SELECT id, username FROM users WHERE username = ?", (username,)).fetchone()
+            conn.close()
+            return User(user['id'], user['username'])
+        except sqlite3.IntegrityError:
+            conn.close()
+            return None # Username already exists
