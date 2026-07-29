@@ -6,41 +6,30 @@ class CampaignManager:
         init_db()
 
     def plan_campaign(self, name, objective, target_audience, budget):
-        cid = gen_id("cmp")
         conn = get_conn()
-        conn.execute(
-            "INSERT INTO campaigns (id, name, objective, target_audience, budget, status) VALUES (?, ?, ?, ?, ?, 'planned')",
-            (cid, name, objective, target_audience, budget)
-        )
+        cid = gen_id("camp")
+        conn.execute("INSERT INTO campaigns VALUES (?, ?, ?, ?, ?, ?, ?)",
+                     (cid, name, objective, target_audience, budget, 'planned', os.datetime.now().isoformat()))
         conn.commit()
         conn.close()
         return cid
 
-    def execute_campaign(self, name):
+    def get_campaign_by_id(self, campaign_id):
         conn = get_conn()
-        # Get campaign by name first to find its ID
-        row_by_name = conn.execute("SELECT id, status FROM campaigns WHERE name = ?", (name,)).fetchone()
-        if not row_by_name:
-            conn.close()
-            return f"Campaign '{name}' not found."
-
-        campaign_id, current_status = row_by_name['id'], row_by_name['status']
-
-        if current_status == 'planned':
-            conn.execute("UPDATE campaigns SET status='executing', updated_at=datetime('now') WHERE id=?", (campaign_id,))
-            conn.commit()
-            conn.close()
-            return f"Campaign '{name}' ({campaign_id}) execution started."
-        else:
-            conn.close()
-            return f"Campaign '{name}' ({campaign_id}) is already in '{current_status}' state."
-
-    @property
-    def campaigns(self):
-        conn = get_conn()
-        rows = conn.execute("SELECT id, name, objective, target_audience, budget, status FROM campaigns ORDER BY created_at DESC").fetchall()
+        row = conn.execute("SELECT * FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
         conn.close()
-        # Return as dict for consistency with previous JSON structure
-        return {r['id']: dict(r) for r in rows}
+        return dict(row) if row else None
 
-campaign_manager = CampaignManager()
+    def get_all_campaigns(self):
+        conn = get_conn()
+        rows = conn.execute("SELECT * FROM campaigns").fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def execute_campaign(self, campaign_id):
+        # Implementation of campaign execution
+        conn = get_conn()
+        conn.execute("UPDATE campaigns SET status = 'executing' WHERE id = ?", (campaign_id,))
+        conn.commit()
+        conn.close()
+        return f"Campaign {campaign_id} started execution."
