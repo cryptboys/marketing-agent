@@ -7,6 +7,7 @@ from werkzeug.security import check_password_hash
 from marketing_agent.dashboard import dashboard
 from marketing_agent.campaign_manager import campaign_manager
 from marketing_agent.db import User, init_db
+from marketing_agent.data_analyzer import data_analyzer
 
 app = Flask(__name__)
 app.secret_key = 'hermes-marketing-agent-secret-key-2026'
@@ -270,6 +271,114 @@ HTML_CAMPAIGNS = '''<!DOCTYPE html>
 </body>
 </html>'''
 
+HTML_ANALYTICS = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Analytics - Marketing Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="flex">
+        <div class="w-64 bg-gray-800 p-6 min-h-screen">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-xl font-bold text-teal-400">Hermes AI</h2>
+                <a href="/logout" class="text-sm text-gray-400 hover:text-white">Logout</a>
+            </div>
+            <nav class="space-y-2">
+                <a href="/" class="block p-2 text-gray-400 hover:bg-gray-700 rounded">Dashboard</a>
+                <a href="/campaigns" class="block p-2 text-gray-400 hover:bg-gray-700 rounded">Campaigns</a>
+                <a href="/analytics" class="block p-2 bg-gray-700 rounded text-teal-400">Analytics</a>
+                <a href="/settings" class="block p-2 text-gray-400 hover:bg-gray-700 rounded">Settings</a>
+            </nav>
+        </div>
+        <div class="flex-1 p-8">
+            <h1 class="text-2xl mb-8">Analytics</h1>
+            <div class="grid grid-cols-2 gap-8 mb-8">
+                <div class="bg-gray-800 p-6 rounded-xl">
+                    <h3 class="text-lg mb-4">Keyword Analysis</h3>
+                    <form id="keyword_form" class="mb-4 flex gap-2">
+                        <input type="text" id="keywords_input" placeholder="Enter keywords..." class="flex-1 p-2 bg-gray-700 rounded">
+                        <button type="submit" class="bg-teal-500 p-2 rounded">Analyze</button>
+                    </form>
+                    <div id="keyword_results" class="text-sm">
+                        <p class="text-gray-500">Submit keywords to analyze.</p>
+                    </div>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-xl">
+                    <h3 class="text-lg mb-4">Competition Distribution</h3>
+                    <canvas id="competitionChart" height="200"></canvas>
+                </div>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-xl mb-8">
+                <h3 class="text-lg mb-4">Campaign Performance Overview</h3>
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="bg-gray-900 p-4 rounded"><p class="text-gray-400 text-xs uppercase">Planned</p><p class="text-2xl font-bold text-blue-400" id="stat_planned">-</p></div>
+                    <div class="bg-gray-900 p-4 rounded"><p class="text-gray-400 text-xs uppercase">Executing</p><p class="text-2xl font-bold text-green-400" id="stat_executing">-</p></div>
+                    <div class="bg-gray-900 p-4 rounded"><p class="text-gray-400 text-xs uppercase">Total Budget</p><p class="text-2xl font-bold text-yellow-400" id="stat_budget">$-</p></div>
+                </div>
+                <canvas id="campaignChart" height="100"></canvas>
+            </div>
+            <div class="grid grid-cols-2 gap-8">
+                <div class="bg-gray-800 p-6 rounded-xl">
+                    <h3 class="text-lg mb-4">Top Audiences</h3>
+                    <div id="audience_list" class="space-y-2"><p class="text-gray-500">No campaign data yet.</p></div>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-xl">
+                    <h3 class="text-lg mb-4">Budget Allocation</h3>
+                    <canvas id="budgetChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('keyword_form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const keywords = document.getElementById('keywords_input').value;
+            const resultsDiv = document.getElementById('keyword_results');
+            resultsDiv.innerHTML = '<p class="text-gray-400">Analyzing...</p>';
+            const res = await fetch('/api/analyze_keywords', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({keywords})});
+            const data = await res.json();
+            if (data.success && data.results) {
+                let html = '<table class="w-full text-xs"><thead><tr class="text-gray-500 uppercase"><th class="text-left pb-1">Keyword</th><th class="text-left pb-1">Volume</th><th class="text-left pb-1">Competition</th></tr></thead><tbody>';
+                const compCounts = {low:0, medium:0, high:0};
+                data.results.forEach(k => {
+                    const comp = k.competition || 'medium';
+                    compCounts[comp] = (compCounts[comp]||0) + 1;
+                    html += '<tr class="border-b border-gray-700"><td class="py-1">'+k.keyword+'</td><td>'+k.volume+'</td><td>'+comp+'</td></tr>';
+                });
+                html += '</tbody></table>';
+                resultsDiv.innerHTML = html;
+                new Chart(document.getElementById('competitionChart'), {type:'doughnut', data:{labels:['Low','Medium','High'], datasets:[{data:[compCounts.low||0, compCounts.medium||0, compCounts.high||0], backgroundColor:['#10b981','#f59e0b','#ef4444']}]}, options:{plugins:{legend:{labels:{color:'#9ca3af'}}}}});
+            } else {
+                resultsDiv.innerHTML = '<p class="text-red-400">Analysis failed.</p>';
+            }
+        });
+        function loadAnalytics() {
+            fetch('/api/dashboard').then(r=>r.json()).then(d => {
+                document.getElementById('stat_planned').textContent = d.campaigns.planned;
+                document.getElementById('stat_executing').textContent = d.campaigns.executing;
+                document.getElementById('stat_budget').textContent = '$'+d.campaigns.total_budget_allocated;
+                new Chart(document.getElementById('campaignChart'), {type:'bar', data:{labels:['Planned','Executing'], datasets:[{label:'Campaigns', data:[d.campaigns.planned, d.campaigns.executing], backgroundColor:['#3b82f6','#10b981']}]}, options:{scales:{y:{beginAtZero:true, ticks:{color:'#9ca3af'}}, x:{ticks:{color:'#9ca3af'}}}, plugins:{legend:{display:false}}}});
+                const used = d.campaigns.total_budget_allocated;
+                const remaining = d.budget_remaining;
+                new Chart(document.getElementById('budgetChart'), {type:'doughnut', data:{labels:['Used','Remaining'], datasets:[{data:[used, remaining], backgroundColor:['#f59e0b','#10b981']}]}, options:{plugins:{legend:{labels:{color:'#9ca3af'}}}}});
+            });
+            fetch('/api/campaigns').then(r=>r.json()).then(campaigns => {
+                const listDiv = document.getElementById('audience_list');
+                const entries = Object.entries(campaigns);
+                if (entries.length === 0) { listDiv.innerHTML = '<p class="text-gray-500">No campaign data yet.</p>'; return; }
+                let html = '';
+                entries.slice(0,5).forEach(([id, c]) => { html += '<div class="bg-gray-900 p-3 rounded text-sm"><span class="text-teal-400">'+c.name+'</span> \u2192 <span class="text-gray-400">'+(c.target_audience||'General')+'</span></div>'; });
+                listDiv.innerHTML = html;
+            });
+        }
+        loadAnalytics();
+    </script>
+</body>
+</html>'''
+
 @app.route('/')
 @login_required
 def index():
@@ -279,6 +388,11 @@ def index():
 @login_required
 def campaigns_page():
     return render_template_string(HTML_CAMPAIGNS, current_user=current_user)
+
+@app.route('/analytics')
+@login_required
+def analytics_page():
+    return render_template_string(HTML_ANALYTICS, current_user=current_user)
 
 @app.route('/api/plan_campaign', methods=['POST'])
 @login_required
@@ -292,6 +406,16 @@ def api_plan_campaign():
         return jsonify({'success': False, 'message': 'Missing data'}), 400
     cid = campaign_manager.plan_campaign(name, objective, target_audience, budget)
     return jsonify({'success': True, 'message': f'Campaign {name} ({cid}) planned!', 'campaign_id': cid})
+
+@app.route('/api/analyze_keywords', methods=['POST'])
+@login_required
+def api_analyze_keywords():
+
+    data = request.get_json()
+    keywords_str = data.get('keywords', '')
+    keywords = [k.strip() for k in keywords_str.replace(',', ' ').split() if k.strip()]
+    results = data_analyzer.analyze_keywords(keywords)
+    return jsonify({'success': True, 'results': results, 'raw': keywords})
 
 @app.route('/api/execute_campaign', methods=['POST'])
 @login_required
