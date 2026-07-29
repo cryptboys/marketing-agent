@@ -1,25 +1,57 @@
 import os
 import importlib.util
+import sys
 
-# Try to load the GoogleAdsClient dynamically to avoid import issues
+# Attempt to find and load the google.ads.google_ads.client module
 GADS_AVAILABLE = False
+GOOGLE_ADS_CLIENT = None
+GOOGLE_ADS_EXCEPTION = None
+
+# Get the path to the site-packages directory within the hermes venv
+site_packages_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'venv', 'Lib', 'site-packages'))
+
+# Add site-packages to sys.path if not already present
+if site_packages_path not in sys.path:
+    sys.path.insert(0, site_packages_path)
+
 try:
-    site_packages_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'venv', 'Lib', 'site-packages'))
-    if os.path.exists(site_packages_path):
-        spec = importlib.util.find_spec("google.ads.google_ads.client", [site_packages_path])
-    else:
-        spec = importlib.util.find_spec("google.ads.google_ads.client")
-    
+    # Try to find the module spec
+    spec = importlib.util.find_spec("google.ads.google_ads.client", [site_packages_path])
     if spec:
-        _GoogleAdsClient = spec.loader.load_module().GoogleAdsClient
-        _GoogleAdsErrors = importlib.util.find_spec("google.ads.google_ads.errors").loader.load_module()
-        GoogleAdsException = _GoogleAdsErrors.GoogleAdsException
+        # Load the module
+        module = spec.loader.load_module()
+        _GoogleAdsClient = module.GoogleAdsClient
+        
+        # Find and load GoogleAdsException
+        errors_spec = importlib.util.find_spec("google.ads.google_ads.errors", [site_packages_path])
+        if errors_spec:
+            errors_module = errors_spec.loader.load_module()
+            GOOGLE_ADS_EXCEPTION = errors_module.GoogleAdsException
+        else:
+            print("Warning: google.ads.google_ads.errors module not found.")
+            class GoogleAdsException(Exception): pass # Placeholder
+            GOOGLE_ADS_EXCEPTION = GoogleAdsException
+            
         GADS_AVAILABLE = True
+        print("Successfully loaded Google Ads client library.")
+    else:
+        print("Warning: google.ads.google_ads.client module spec not found in site-packages.")
+
 except (ImportError, AttributeError, ModuleNotFoundError) as e:
-    print(f"Warning: Could not load Google Ads client: {e}")
-    # Create placeholder class
-    class GoogleAdsException(Exception):
-        pass
+    print(f"Warning: Could not load Google Ads client library: {e}")
+    # Define placeholder classes if import fails
+    class GoogleAdsClientPlaceholder:
+        def __init__(self):
+            raise ModuleNotFoundError("Google Ads client is not available. Please ensure 'google-ads' is installed correctly.")
+        def _init_client(self):
+            raise ModuleNotFoundError("Google Ads client is not available.")
+        def list_campaigns(self):
+            raise ModuleNotFoundError("Google Ads client is not available.")
+        # ... other methods similarly raising errors
+
+    _GoogleAdsClient = GoogleAdsClientPlaceholder
+    GOOGLE_ADS_EXCEPTION = type('GoogleAdsException', (Exception,), {})
+    print("Using placeholder for Google Ads client.")
 
 class GoogleAdsClient:
     def __init__(self):
@@ -27,28 +59,50 @@ class GoogleAdsClient:
         self._customer_id = os.environ.get("GOOGLE_ADS_CUSTOMER_ID")
 
     def _init_client(self):
-        if self._client is None and GADS_AVAILABLE:
+        if not GADS_AVAILABLE:
+            raise ModuleNotFoundError("Google Ads client library is not available. Please ensure 'google-ads' is installed correctly.")
+
+        if self._client is None:
             conn = None
             try:
                 from marketing_agent.db import get_conn
                 conn = get_conn()
                 row = conn.execute("SELECT * FROM integrations WHERE platform = ?", ('google_ads',)).fetchone()
                 
+                client_config = {}
                 if row and row['refresh_token']:
-                    self._client = _GoogleAdsClient.load_from_dict({
+                    client_config = {
                         "developer_token": row['developer_token'],
                         "client_id": row['client_id'],
                         "client_secret": row['client_secret'],
                         "refresh_token": row['refresh_token'],
                         "login_customer_id": row['customer_id']
-                    }, version="v16")
+                    }
                     self._customer_id = row['customer_id']
                 else:
-                    self._client = _GoogleAdsClient.load_from_storage(version="v16")
-                    self._customer_id = os.environ.get("GOOGLE_ADS_CUSTOMER_ID")
+                    # Fallback to .env if not found in DB or if DB is unavailable
+                    client_id = os.environ.get("GOOGLE_ADS_CLIENT_ID")
+                    client_secret = os.environ.get("GOOGLE_ADS_CLIENT_SECRET")
+                    developer_token = os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN")
+                    refresh_token = os.environ.get("GOOGLE_ADS_REFRESH_TOKEN")
+                    customer_id = os.environ.get("GOOGLE_ADS_CUSTOMER_ID")
+                    
+                    if client_id and client_secret and developer_token and refresh_token and customer_id:
+                         client_config = {
+                            "developer_token": developer_token,
+                            "client_id": client_id,
+                            "client_secret": client_secret,
+                            "refresh_token": refresh_token,
+                            "login_customer_id": customer_id
+                        }
+                         self._customer_id = customer_id
+                    else:
+                        raise Exception("Google Ads credentials not found in DB or .env.")
 
                 if not self._customer_id:
-                    raise Exception("GOOGLE_ADS_CUSTOMER_ID not set in .env or DB.")
+                    raise Exception("GOOGLE_ADS_CUSTOMER_ID is missing.")
+                
+                self._client = _GoogleAdsClient.load_from_dict(client_config, version="v16")
 
             except Exception as e:
                 raise Exception(f"Failed to initialize Google Ads client: {e}")
@@ -58,8 +112,6 @@ class GoogleAdsClient:
         return self._client
 
     def list_campaigns(self):
-        if not GADS_AVAILABLE:
-            raise Exception("Google Ads library not available. Please install google-ads.")
         client = self._init_client()
         ga_service = client.get_service("GoogleAdsService")
 
@@ -86,10 +138,13 @@ class GoogleAdsClient:
                         "status": row.campaign.status.name,
                         "budget": row.campaign.budget.amount_micros / 1_000_000
                     })
-        except GoogleAdsException as ex:
-            print(f"Request with ID \"{ex.request_id}\" failed with status \"{ex.error.code().name}\"")
+        except GOOGLE_ADS_EXCEPTION as ex:
+            print(f"Request with ID \"{ex.request_id}\" failed with status \"{ex.error.code().name}\" and includes the following errors:")
             for error in ex.errors:
                 print(f"\tError with message \"{error.message}\".")
+                if error.location:
+                    for field_path_element in error.location.field_path_elements:
+                        print(f"\t\tOn field: {field_path_element.field_name}")
             raise
         return campaigns
 

@@ -31,8 +31,8 @@ def init_db():
             budget REAL NOT NULL,
             status TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            platform_name TEXT DEFAULT NULL,        # New column
-            platform_campaign_id TEXT DEFAULT NULL  # New column
+            platform_name TEXT DEFAULT NULL,
+            platform_campaign_id TEXT DEFAULT NULL
         );
     """)
     cursor.execute("""
