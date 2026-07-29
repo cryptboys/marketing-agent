@@ -30,7 +30,9 @@ def init_db():
             target_audience TEXT NOT NULL,
             budget REAL NOT NULL,
             status TEXT NOT NULL,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            platform_name TEXT DEFAULT NULL,        # New column
+            platform_campaign_id TEXT DEFAULT NULL  # New column
         );
     """)
     cursor.execute("""
@@ -78,8 +80,6 @@ class User(UserMixin):
     @staticmethod
     def get(user_id):
         conn = get_conn()
-        # Check if user_id is likely a username or an actual ID
-        # Simple heuristic: if it contains digits and a hyphen, it's likely an ID
         is_likely_id = '-' in user_id and any(char.isdigit() for char in user_id)
         
         if is_likely_id:

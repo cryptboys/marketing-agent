@@ -5,11 +5,11 @@ class CampaignManager:
     def __init__(self):
         init_db()
 
-    def plan_campaign(self, name, objective, target_audience, budget):
+    def plan_campaign(self, name, objective, target_audience, budget, platform_name=None, platform_campaign_id=None):
         conn = get_conn()
         cid = gen_id("camp")
-        conn.execute("INSERT INTO campaigns VALUES (?, ?, ?, ?, ?, ?, ?)",
-                     (cid, name, objective, target_audience, budget, 'planned', os.datetime.now().isoformat()))
+        conn.execute("INSERT INTO campaigns (id, name, objective, target_audience, budget, status, created_at, platform_name, platform_campaign_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                     (cid, name, objective, target_audience, budget, 'planned', os.datetime.now().isoformat(), platform_name, platform_campaign_id))
         conn.commit()
         conn.close()
         return cid
@@ -26,10 +26,28 @@ class CampaignManager:
         conn.close()
         return [dict(r) for r in rows]
 
-    def execute_campaign(self, campaign_id):
-        # Implementation of campaign execution
+    def update_campaign_platform_info(self, campaign_id, platform_name, platform_campaign_id):
         conn = get_conn()
-        conn.execute("UPDATE campaigns SET status = 'executing' WHERE id = ?", (campaign_id,))
+        conn.execute("UPDATE campaigns SET platform_name = ?, platform_campaign_id = ? WHERE id = ?",
+                     (platform_name, platform_campaign_id, campaign_id))
         conn.commit()
         conn.close()
-        return f"Campaign {campaign_id} started execution."
+        return f"Platform info updated for campaign {campaign_id}"
+
+    def execute_campaign(self, campaign_id):
+        campaign = self.get_campaign_by_id(campaign_id)
+        if not campaign:
+            return "Campaign not found."
+
+        if campaign['status'] == 'planned':
+            conn = get_conn()
+            conn.execute("UPDATE campaigns SET status = 'executing' WHERE id = ?", (campaign_id,))
+            conn.commit()
+            conn.close()
+            # Placeholder for actual execution logic (e.g., calling Google Ads API)
+            # This is where we'll integrate with platform clients later
+            return f"Campaign {campaign_id} started execution."
+        elif campaign['status'] == 'executing':
+            return f"Campaign {campaign_id} is already executing."
+        else:
+            return f"Campaign {campaign_id} cannot be executed in current status ({campaign['status']})."
