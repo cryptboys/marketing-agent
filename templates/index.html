@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marketing Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-300 font-sans">
+
+<div class="flex h-screen">
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-gray-800 flex flex-col shrink-0">
+        <div class="p-5 border-b border-gray-700">
+            <h2 class="text-xl font-bold text-teal-400">Marketing AI</h2>
+            <p class="text-xs text-gray-500 mt-1">Automated Campaign Engine</p>
+        </div>
+        <nav class="flex-1 p-3 space-y-1">
+            <button onclick="showPage('overview')"  class="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-sm menu-btn" data-page="overview">📊 Overview</button>
+            <button onclick="showPage('campaigns')" class="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-sm menu-btn" data-page="campaigns">📢 Campaigns</button>
+            <button onclick="showPage('leads')"    class="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-sm menu-btn" data-page="leads">👥 Leads</button>
+            <button onclick="showPage('content')"  class="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-sm menu-btn" data-page="content">📅 Content Calendar</button>
+            <button onclick="showPage('budget')"   class="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-sm menu-btn" data-page="budget">💰 Budget</button>
+        </nav>
+        <div class="p-3 border-t border-gray-700 text-xs text-gray-500">
+            Last sync: <span id="last-sync">Just now</span>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main id="main-content" class="flex-1 p-6 overflow-y-auto">
+
+        <!-- ========== OVERVIEW ========== -->
+        <div id="page-overview" class="page active">
+            <h1 class="text-3xl font-bold text-teal-400 mb-6">Overview</h1>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-gray-800 p-4 rounded"><p class="text-gray-400 text-sm">Active Campaigns</p><p class="text-3xl font-bold text-blue-400" id="stat-active">0</p></div>
+                <div class="bg-gray-800 p-4 rounded"><p class="text-gray-400 text-sm">Total Leads</p><p class="text-3xl font-bold text-green-400" id="stat-leads">0</p></div>
+                <div class="bg-gray-800 p-4 rounded"><p class="text-gray-400 text-sm">Spent This Month</p><p class="text-3xl font-bold text-yellow-400" id="stat-spent">$0</p></div>
+                <div class="bg-gray-800 p-4 rounded"><p class="text-gray-400 text-sm">Remaining Budget</p><p class="text-3xl font-bold text-red-400" id="stat-remaining">$0</p></div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded">
+                <h2 class="text-lg font-bold mb-3">Recent Activity</h2>
+                <ul id="activity-list" class="space-y-2 text-sm"></ul>
+            </div>
+        </div>
+
+        <!-- ========== CAMPAIGNS ========== -->
+        <div id="page-campaigns" class="page hidden">
+            <h1 class="text-3xl font-bold text-teal-400 mb-6">Campaigns</h1>
+            <div class="bg-gray-800 p-4 rounded">
+                <table class="w-full text-sm">
+                    <thead><tr class="border-b border-gray-700 text-left"><th class="p-2">Name</th><th class="p-2">Platform</th><th class="p-2">Budget</th><th class="p-2">Spent</th><th class="p-2">Status</th><th class="p-2">CTR</th></tr></thead>
+                    <tbody id="campaigns-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ========== LEADS ========== -->
+        <div id="page-leads" class="page hidden">
+            <h1 class="text-3xl font-bold text-teal-400 mb-6">Leads</h1>
+            <div class="bg-gray-800 p-4 rounded">
+                <table class="w-full text-sm">
+                    <thead><tr class="border-b border-gray-700 text-left"><th class="p-2">Name</th><th class="p-2">Email</th><th class="p-2">Source</th><th class="p-2">Stage</th><th class="p-2">Date</th></tr></thead>
+                    <tbody id="leads-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ========== CONTENT CALENDAR ========== -->
+        <div id="page-content" class="page hidden">
+            <h1 class="text-3xl font-bold text-teal-400 mb-6">Content Calendar</h1>
+            <div class="bg-gray-800 p-4 rounded">
+                <table class="w-full text-sm">
+                    <thead><tr class="border-b border-gray-700 text-left"><th class="p-2">Date</th><th class="p-2">Title</th><th class="p-2">Channel</th><th class="p-2">Status</th></tr></thead>
+                    <tbody id="content-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ========== BUDGET ========== -->
+        <div id="page-budget" class="page hidden">
+            <h1 class="text-3xl font-bold text-teal-400 mb-6">Budget Overview</h1>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="bg-gray-800 p-4 rounded"><p class="text-gray-400 text-sm">Total Budget</p><p class="text-3xl font-bold text-green-400" id="budget-total">$0</p></div>
+                <div class="bg-gray-800 p-4 rounded"><p class="text-gray-400 text-sm">Total Spent</p><p class="text-3xl font-bold text-red-400" id="budget-spent">$0</p></div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded">
+                <h2 class="text-lg font-bold mb-3">Allocation by Channel</h2>
+                <div id="budget-allocation" class="space-y-2"></div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+// ==================== DATA ====================
+const DATA = {
+    campaigns: [
+        { name: "Summer Sale 2024",     platform: "Google Ads",  budget: 5000, spent: 3200, status: "Active",   ctr: "2.4%" },
+        { name: "Brand Awareness Q3",   platform: "Meta Ads",    budget: 8000, spent: 5000, status: "Active",   ctr: "1.8%" },
+        { name: "Retargeting - Visitors",platform: "Google Ads", budget: 3000, spent: 1200, status: "Active",   ctr: "4.2%" },
+        { name: "Product Launch Video", platform: "TikTok Ads",  budget: 6000, spent: 0,    status: "Scheduled", ctr: "0%"   },
+        { name: "Newsletter Promo",     platform: "Email",       budget: 1000, spent: 800,  status: "Completed", ctr: "3.1%" },
+        { name: "Referral Program",     platform: "Meta Ads",    budget: 2000, spent: 2100, status: "Completed", ctr: "5.0%" },
+        { name: "Webinar Registration", platform: "LinkedIn Ads", budget: 4000, spent: 900,  status: "Paused",   ctr: "2.0%" },
+        { name: "Holiday Campaign",     platform: "Google Ads",  budget: 10000,spent: 7500, status: "Active",   ctr: "2.8%" },
+        { name: "Influencer Collab",    platform: "TikTok Ads",  budget: 5000, spent: 0,    status: "Scheduled", ctr: "0%"   },
+        { name: "Customer Retention",   platform: "Email",       budget: 1500, spent: 1100, status: "Completed", ctr: "2.2%" }
+    ],
+    leads: [
+        { name: "Ahmad Fauzi",     email: "ahmad@example.com",     source: "Google Ads", stage: "Qualified",  date: "2026-07-25" },
+        { name: "Sarah Wijaya",    email: "sarah.w@example.com",   source: "Referral",   stage: "Negotiation",date: "2026-07-24" },
+        { name: "Budi Santoso",    email: "budi@example.com",      source: "Meta Ads",   stage: "New",       date: "2026-07-20" },
+        { name: "Dewi Lestari",    email: "dewi@example.com",      source: "LinkedIn",   stage: "Qualified",  date: "2026-07-19" },
+        { name: "Rizky Pratama",   email: "rizky@example.com",     source: "Google Ads", stage: "New",       date: "2026-07-18" },
+        { name: "Nina Haryanto",   email: "nina@example.com",      source: "Email",      stage: "Closed Won",date: "2026-07-15" },
+        { name: "Dimas Ardiansyah",email: "dimas@example.com",     source: "Meta Ads",   stage: "Qualified",  date: "2026-07-14" },
+        { name: "Rina Marlina",    email: "rina@example.com",      source: "Referral",   stage: "Negotiation",date: "2026-07-12" },
+        { name: "Andi Pratama",    email: "andi@example.com",      source: "Google Ads", stage: "New",       date: "2026-07-10" },
+        { name: "Siti Rahayu",     email: "siti@example.com",      source: "LinkedIn",   stage: "Closed Won",date: "2026-07-08" }
+    ],
+    activities: [
+        "Campaign 'Summer Sale' spent $1,200 today (Google Ads)",
+        "New lead Ahmad Fauzi from Google Ads",
+        "Budget alert: 'Retargeting - Visitors' at 40% spend",
+        "Content scheduled: TikTok video 'Product Teaser' for tomorrow",
+        "Campaign 'Brand Awareness Q3' CTR dropped to 1.8%"
+    ],
+    content: [
+        { date: "2026-07-30", title: "Product Teaser - New Launch", channel: "TikTok", status: "Scheduled" },
+        { date: "2026-08-01", title: "Blog: 5 Tips Summer Marketing", channel: "Blog", status: "Draft" },
+        { date: "2026-08-02", title: "Instagram Carousel - Case Study", channel: "Instagram", status: "Scheduled" },
+        { date: "2026-08-03", title: "Email Newsletter - August Promo", channel: "Email", status: "Draft" },
+        { date: "2026-08-05", title: "LinkedIn Post - Industry Insights", channel: "LinkedIn", status: "Review" },
+        { date: "2026-08-07", title: "YouTube Short - Behind the Scenes", channel: "YouTube", status: "Scheduled" }
+    ],
+    budget_channels: [
+        { channel: "Google Ads", allocated: 18000, spent: 11900 },
+        { channel: "Meta Ads",   allocated: 10000, spent: 7100 },
+        { channel: "TikTok Ads", allocated: 11000, spent: 0 },
+        { channel: "LinkedIn",   allocated: 4000,  spent: 900 },
+        { channel: "Email",      allocated: 2500,  spent: 1900 }
+    ]
+};
+
+// ==================== RENDER ====================
+let currentPage = 'overview';
+
+function showPage(page) {
+    currentPage = page;
+    // hide all
+    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+    // show target
+    const el = document.getElementById('page-' + page);
+    if (el) el.classList.remove('hidden');
+    // highlight menu
+    document.querySelectorAll('.menu-btn').forEach(b => {
+        b.classList.remove('bg-gray-700', 'text-white');
+        if(b.dataset.page === page) b.classList.add('bg-gray-700', 'text-white');
+    });
+}
+
+// Format currency
+function fmt(n) { return '$' + n.toLocaleString('en-US'); }
+
+function init() {
+    // ===== Stats =====
+    const active = DATA.campaigns.filter(c => c.status === 'Active').length;
+    const totalLeads = DATA.leads.length;
+    const monthlySpent = DATA.campaigns.reduce((s, c) => s + c.spent, 0);
+    const totalBudget = DATA.campaigns.reduce((s, c) => s + c.budget, 0);
+    const remaining = totalBudget - monthlySpent;
+
+    document.getElementById('stat-active').textContent = active;
+    document.getElementById('stat-leads').textContent = totalLeads;
+    document.getElementById('stat-spent').textContent = fmt(monthlySpent);
+    document.getElementById('stat-remaining').textContent = fmt(remaining);
+
+    // ===== Activity List =====
+    document.getElementById('activity-list').innerHTML = DATA.activities.map(a =>
+        `<li class="flex items-start gap-2"><span class="text-teal-400 mt-1">●</span> <span>${a}</span></li>`
+    ).join('');
+
+    // ===== Campaigns Table =====
+    document.getElementById('campaigns-table-body').innerHTML = DATA.campaigns.map(c =>
+        `<tr class="border-b border-gray-700"><td class="p-2 font-medium">${c.name}</td><td class="p-2">${c.platform}</td><td class="p-2">${fmt(c.budget)}</td><td class="p-2">${fmt(c.spent)}</td><td class="p-2"><span class="px-2 py-0.5 rounded text-xs font-bold ${c.status === 'Active' ? 'bg-green-700 text-green-300' : c.status === 'Scheduled' ? 'bg-blue-700 text-blue-300' : c.status === 'Completed' ? 'bg-gray-600 text-gray-300' : 'bg-yellow-700 text-yellow-300'}">${c.status}</span></td><td class="p-2">${c.ctr}</td></tr>`
+    ).join('');
+
+    // ===== Leads Table =====
+    document.getElementById('leads-table-body').innerHTML = DATA.leads.map(l =>
+        `<tr class="border-b border-gray-700"><td class="p-2">${l.name}</td><td class="p-2">${l.email}</td><td class="p-2">${l.source}</td><td class="p-2"><span class="px-2 py-0.5 rounded text-xs font-bold ${l.stage === 'Closed Won' ? 'bg-green-700 text-green-300' : l.stage === 'Negotiation' ? 'bg-yellow-700 text-yellow-300' : l.stage === 'Qualified' ? 'bg-blue-700 text-blue-300' : 'bg-gray-600 text-gray-300'}">${l.stage}</span></td><td class="p-2">${l.date}</td></tr>`
+    ).join('');
+
+    // ===== Content Calendar =====
+    document.getElementById('content-table-body').innerHTML = DATA.content.map(c =>
+        `<tr class="border-b border-gray-700"><td class="p-2">${c.date}</td><td class="p-2">${c.title}</td><td class="p-2">${c.channel}</td><td class="p-2"><span class="px-2 py-0.5 rounded text-xs font-bold ${c.status === 'Scheduled' ? 'bg-blue-700 text-blue-300' : c.status === 'Draft' ? 'bg-gray-600 text-gray-300' : 'bg-yellow-700 text-yellow-300'}">${c.status}</span></td></tr>`
+    ).join('');
+
+    // ===== Budget =====
+    document.getElementById('budget-total').textContent = fmt(totalBudget);
+    document.getElementById('budget-spent').textContent = fmt(monthlySpent);
+    document.getElementById('budget-allocation').innerHTML = DATA.budget_channels.map(b => {
+        const pct = Math.round((b.spent / b.allocated) * 100);
+        return `<div><div class="flex justify-between text-sm mb-1"><span>${b.channel}</span><span>${fmt(b.spent)} / ${fmt(b.allocated)} (${pct}%)</span></div><div class="w-full bg-gray-700 rounded h-2"><div class="bg-teal-500 h-2 rounded" style="width:${Math.min(pct,100)}%"></div></div></div>`;
+    }).join('');
+
+    // ===== Default page =====
+    showPage('overview');
+    document.getElementById('last-sync').textContent = new Date().toLocaleString('id-ID');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
