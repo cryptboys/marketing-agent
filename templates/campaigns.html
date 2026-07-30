@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campaigns - Marketing Agent</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-300 font-sans">
+
+<div class="flex h-screen">
+    <aside class="w-64 bg-gray-800 flex flex-col shrink-0">
+        <div class="p-5 border-b border-gray-700">
+            <h2 class="text-xl font-bold text-teal-400">Marketing Agent</h2>
+            <p class="text-xs text-gray-500 mt-1">Welcome, {{ current_user.username }}!</p>
+        </div>
+        <nav class="flex-1 p-3 space-y-1">
+            <a href="/" class="block px-3 py-2 rounded hover:bg-gray-700 text-sm">Dashboard</a>
+            <a href="/campaigns" class="block px-3 py-2 rounded hover:bg-gray-700 text-sm bg-gray-700">Campaigns</a>
+            <a href="/analytics" class="block px-3 py-2 rounded hover:bg-gray-700 text-sm">Analytics</a>
+            <a href="/integrations" class="block px-3 py-2 rounded hover:bg-gray-700 text-sm">Integrations</a>
+        </nav>
+        <div class="p-3 border-t border-gray-700">
+            <a href="/logout" class="block py-2 px-4 rounded bg-red-600 hover:bg-red-700 text-white text-center text-sm">Logout</a>
+        </div>
+    </aside>
+
+    <main class="flex-1 p-6 overflow-y-auto">
+        <h1 class="text-3xl font-bold text-teal-400 mb-6">Campaigns</h1>
+
+        <div class="bg-gray-800 p-4 rounded mb-6">
+            <h2 class="text-lg font-bold mb-3">Plan New Campaign</h2>
+            <form method="post" action="/plan_campaign">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div><label class="block text-sm mb-1">Name</label><input type="text" name="name" class="w-full p-2 rounded bg-gray-700 border border-gray-600" required></div>
+                    <div><label class="block text-sm mb-1">Objective</label><input type="text" name="objective" class="w-full p-2 rounded bg-gray-700 border border-gray-600" required></div>
+                    <div><label class="block text-sm mb-1">Target Audience</label><input type="text" name="target_audience" class="w-full p-2 rounded bg-gray-700 border border-gray-600" required></div>
+                    <div><label class="block text-sm mb-1">Budget ($)</label><input type="number" name="budget" class="w-full p-2 rounded bg-gray-700 border border-gray-600" required></div>
+                </div>
+                <button type="submit" class="py-2 px-4 bg-teal-600 hover:bg-teal-700 rounded text-sm">Plan Campaign</button>
+            </form>
+        </div>
+
+        <div class="bg-gray-800 p-4 rounded">
+            <h2 class="text-lg font-bold mb-3">All Campaigns</h2>
+            <table class="w-full text-sm">
+                <thead><tr class="border-b border-gray-700 text-left"><th class="p-2">Name</th><th class="p-2">Objective</th><th class="p-2">Status</th><th class="p-2">Budget</th><th class="p-2">Action</th></tr></thead>
+                <tbody>
+                {% for c in campaigns %}
+                <tr class="border-b border-gray-700">
+                    <td class="p-2">{{ c.name }}</td>
+                    <td class="p-2">{{ c.objective }}</td>
+                    <td class="p-2">{{ c.status }}</td>
+                    <td class="p-2">${{ c.budget }}</td>
+                    <td class="p-2">
+                        {% if c.status == 'planned' %}
+                        <form method="post" action="/execute_campaign" style="display:inline">
+                            <input type="hidden" name="campaign_id" value="{{ c.id }}">
+                            <button type="submit" class="py-1 px-2 bg-blue-600 hover:bg-blue-700 rounded text-xs">Execute</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="p-2 text-gray-500">No campaigns yet.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+</body>
+</html>

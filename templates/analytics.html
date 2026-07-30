@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics - Marketing Agent</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-300 font-sans">
+
+<div class="flex h-screen">
+    <aside class="w-64 bg-gray-800 flex flex-col shrink-0">
+        <div class="p-5 border-b border-gray-700">
+            <h2 class="text-xl font-bold text-teal-400">Marketing Agent</h2>
+            <p class="text-xs text-gray-500 mt-1">Welcome, {{ current_user.username }}!</p>
+        </div>
+        <nav class="flex-1 p-3 space-y-1">
+            <a href="/" class="block px-3 py-2 rounded hover:bg-gray-700 text-sm">Dashboard</a>
+            <a href="/campaigns" class="block px-3 py-2 rounded hover:bg-gray-700 text-sm">Campaigns</a>
+            <a href="/analytics" class="block px-3 py-2 rounded hover:bg-gray-700 text-sm bg-gray-700">Analytics</a>
+            <a href="/integrations" class="block px-3 py-2 rounded hover:bg-gray-700 text-sm">Integrations</a>
+        </nav>
+        <div class="p-3 border-t border-gray-700">
+            <a href="/logout" class="block py-2 px-4 rounded bg-red-600 hover:bg-red-700 text-white text-center text-sm">Logout</a>
+        </div>
+    </aside>
+
+    <main class="flex-1 p-6 overflow-y-auto">
+        <h1 class="text-3xl font-bold text-teal-400 mb-6">Analytics</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="bg-gray-800 p-4 rounded">
+                <h2 class="text-lg font-bold mb-2">Keyword Analysis</h2>
+                <form id="kw-form" class="mb-3">
+                    <div class="flex gap-2">
+                        <input type="text" id="kw-input" placeholder="e.g. summer sale" class="flex-1 p-2 rounded bg-gray-700 border border-gray-600 text-sm">
+                        <button type="submit" class="py-2 px-3 bg-teal-600 hover:bg-teal-700 rounded text-sm">Analyze</button>
+                    </div>
+                </form>
+                <div id="kw-result" class="p-3 bg-gray-900 rounded min-h-[60px] text-sm"></div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded">
+                <h2 class="text-lg font-bold mb-2">Stats</h2>
+                <table class="w-full text-sm">
+                    <tr><td class="p-1">Total Campaigns</td><td class="p-1 font-bold">{{ analytics.total_campaigns if analytics else 0 }}</td></tr>
+                    <tr><td class="p-1">Total Budget</td><td class="p-1 font-bold">${{ analytics.total_budget if analytics else 0 }}</td></tr>
+                    <tr><td class="p-1">Planned</td><td class="p-1 font-bold">{{ analytics.planned if analytics else 0 }}</td></tr>
+                    <tr><td class="p-1">Executing</td><td class="p-1 font-bold">{{ analytics.executing if analytics else 0 }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+document.getElementById('kw-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const kw = document.getElementById('kw-input').value;
+    const div = document.getElementById('kw-result');
+    div.innerHTML = 'Loading...';
+    const r = await fetch('/api/analyze_keywords', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({keywords: kw})});
+    const d = await r.json();
+    div.innerHTML = '<pre class="text-green-400 text-xs">' + JSON.stringify(d, null, 2) + '</pre>';
+});
+</script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from .db import get_conn, gen_id, init_db
 
 class CampaignManager:
@@ -9,7 +10,7 @@ class CampaignManager:
         conn = get_conn()
         cid = gen_id("camp")
         conn.execute("INSERT INTO campaigns (id, name, objective, target_audience, budget, status, created_at, platform_name, platform_campaign_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                     (cid, name, objective, target_audience, budget, 'planned', os.datetime.now().isoformat(), platform_name, platform_campaign_id))
+                     (cid, name, objective, target_audience, budget, 'planned', datetime.now().isoformat(), platform_name, platform_campaign_id))
         conn.commit()
         conn.close()
         return cid

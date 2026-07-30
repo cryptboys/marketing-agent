@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Integrations - Marketing Agent</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-300 font-sans">
+
+<div class="flex h-screen">
+    <aside class="w-64 bg-gray-800 flex flex-col shrink-0">
+        <div class="p-5 border-b border-gray-700">
+            <h2 class="text-xl font-bold text-teal-400">Marketing Agent</h2>
+            <p class="text-xs text-gray-500 mt-1">Welcome, {{ current_user.username }}!</p>
+        </div>
+        <nav class="flex-1 p-3 space-y-1">
+            <a href="/" class="block px-3 py-2 rounded hover:bg-gray-700 text-sm">Dashboard</a>
+            <a href="/campaigns" class="block px-3 py-2 rounded hover:bg-gray-700 text-sm">Campaigns</a>
+            <a href="/analytics" class="block px-3 py-2 rounded hover:bg-gray-700 text-sm">Analytics</a>
+            <a href="/integrations" class="block px-3 py-2 rounded hover:bg-gray-700 text-sm bg-gray-700">Integrations</a>
+        </nav>
+        <div class="p-3 border-t border-gray-700">
+            <a href="/logout" class="block py-2 px-4 rounded bg-red-600 hover:bg-red-700 text-white text-center text-sm">Logout</a>
+        </div>
+    </aside>
+
+    <main class="flex-1 p-6 overflow-y-auto">
+        <h1 class="text-3xl font-bold text-teal-400 mb-6">Integrations</h1>
+
+        <div class="bg-gray-800 p-4 rounded max-w-lg">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-lg font-bold">Google Ads</h2>
+                <span class="px-2 py-1 rounded text-xs font-bold {% if google_ads_connected %}bg-green-700 text-green-300{% else %}bg-yellow-700 text-yellow-300{% endif %}">
+                    {{ 'Connected' if google_ads_connected else 'Not Connected' }}
+                </span>
+            </div>
+            {% if not google_ads_connected %}
+                {% if auth_url %}
+                <a href="{{ auth_url }}" class="inline-block py-2 px-4 bg-teal-600 hover:bg-teal-700 rounded text-sm">Connect Google Ads</a>
+                {% else %}
+                <p class="text-yellow-400 text-sm">Set GOOGLE_ADS_CLIENT_ID etc in .env</p>
+                {% endif %}
+            {% else %}
+            <p class="text-green-400 text-sm mb-2">✓ Connected</p>
+            <form method="post" action="/api/ls-google-campaigns">
+                <button type="submit" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 rounded text-sm">List Campaigns</button>
+            </form>
+            {% endif %}
+        </div>
+    </main>
+</div>
+</body>
+</html>
